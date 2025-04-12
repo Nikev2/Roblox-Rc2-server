@@ -1,7 +1,8 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import socket
-
-
+import threading
+import time
+import urllib.request
 
 def get_local_ip():
     # Use a dummy connection to an external IP
@@ -13,9 +14,10 @@ def get_local_ip():
         except Exception:
             ip = "127.0.0.1"
     return ip
+
 HOST = get_local_ip()  # Accessible from LAN
-PORT = 8765        # Use any open port
-original_result = "Initial result"
+PORT = 8765            # Use any open port
+original_result = "false"
 result = original_result  # This will be updated via POST
 
 class SimpleHandler(BaseHTTPRequestHandler):
@@ -41,7 +43,20 @@ class SimpleHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b"Result updated")
 
+def keep_alive():
+    def ping():
+        while True:
+            try:
+                print("🔁 Sending keep-alive ping...")
+                urllib.request.urlopen(f"http://{HOST}:{PORT}", timeout=10)
+            except Exception as e:
+                print(f"⚠️ Keep-alive ping failed: {e}")
+            time.sleep(300)  # Ping every 5 minutes
+    thread = threading.Thread(target=ping, daemon=True)
+    thread.start()
+
 def run():
+    keep_alive()
     server = HTTPServer((HOST, PORT), SimpleHandler)
     print(f"🚀 HTTP server running on http://{HOST}:{PORT}")
     server.serve_forever()
